@@ -29,11 +29,21 @@ module Support
     system "curl -L --progress-bar -o \"#{package_path}/Package Control.sublime-package\" https://sublime.wbond.net/Package%20Control.sublime-package"
   end
 
-  def brew_install(package, *options)
-    output = `brew list #{package}`
-    return unless output.empty?
+  def brew_install(package, *args)
+    versions = `brew list #{package} --versions`
+    options = args.last.is_a?(Hash) ? args.pop : {}
 
-    system "brew install #{package} #{options.join ' '}"
+    # if brew exits with error we install tmux
+    if versions.empty?
+      system "brew install #{package} #{args.join ' '}"
+    elsif options[:requires]
+      # brew did not error out, verify tmux is greater than 1.8
+      # e.g. brew_tmux_query = 'tmux 1.9a'
+      installed_version = versions.split(/\n/).first.split(' ')[1]
+      unless version_match?(options[:version], installed_version)
+        system "brew upgrade #{package} #{args.join ' '}"
+      end
+    end
   end
 
   def brew_cask_install(package, *options)
@@ -47,6 +57,17 @@ module Support
     path = "/Applications/#{name}.app"
     ["~#{path}", path].each do |full_path|
       return full_path if File.directory? full_path
+    end
+
+    return nil
+  end
+
+  def subl_path
+    ["/Applications", "~/Applications"].each do |app_path|
+      `find #{app_path} -name subl`.each_line do |subl_path|
+        subl_path.chomp!
+        return subl_path if `\"#{subl_path}\" --version`.start_with? 'Sublime Text'
+      end
     end
 
     return nil
@@ -241,16 +262,16 @@ module Steps
   end
 
   def sublime
-    app_path = Support.app_path("Sublime Text") || Support.app_path("Sublime Text 2")
+    subl_path = Support.subl_path
 
-    if app_path.nil?
+    if subl_path.nil?
       self.block "Looks like Sublime Text hasn't been installed yet. You'll need to take care of that before class starts."
       return
     end
 
     `which subl`
 
-    system "ln -s \"#{app_path}/Contents/SharedSupport/bin/subl\" /usr/local/bin/subl" unless $?.success?
+    system "ln -s \"#{subl_path}\" /usr/local/bin/subl" unless $?.success?
 
     system "git config --global core.editor \"subl -n -w\""
 
@@ -259,7 +280,7 @@ module Steps
 
     self.block description
 
-    support_dir = app_path[/Sublime Text 2/] || "Sublime Text 3"
+    support_dir = subl_path[/Sublime Text 2/] || "Sublime Text 3"
 
     package_dir = File.expand_path "~/Library/Application Support/#{support_dir}/Installed Packages"
 
