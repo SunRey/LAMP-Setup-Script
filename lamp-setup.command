@@ -4,7 +4,7 @@ module Support
   extend self
 
   @@repo_path = "~/vagrant-lamp"
-  @@repo_url = "https://github.com/gocodeup/Codeup-Vagrant-Setup/archive/master.zip"
+  @@repo_url = "https://github.com/gocodeup/Codeup-Vagrant-Setup.git"
   @@steps = ["start", "xcode", "homebrew", "vagrant_lamp", "git", "sublime", "final"]
 
   def steps
@@ -20,9 +20,10 @@ module Support
   end
 
   def git_download(repo_url, local_path)
-    system "curl -L --progress-bar -o /tmp/vagrant_lamp.zip " + repo_url
-    system "unzip /tmp/vagrant_lamp.zip -d /tmp"
-    system "mv /tmp/Codeup-Vagrant-Setup-master " + repo_path
+    system "git clone #{repo_url} #{local_path}"
+    if IO.readlines("#{local_path}/.git/info/exclude").grep(/^\*$/).empty?
+      system "echo '*' >> #{local_path}/.git/info/exclude"
+    end
   end
 
   def subl_pkg_install(package_path)
@@ -182,7 +183,7 @@ module Steps
     end
 
     # Install brew cask
-    system('brew tap | grep caskroom/cask > /dev/null') || Support.brew_install('caskroom/cask/brew-cask')
+    Support.brew_install 'caskroom/cask/brew-cask'
 
     # Install ansible
     Support.brew_install 'ansible'
@@ -269,9 +270,7 @@ module Steps
       return
     end
 
-    `which subl`
-
-    system "ln -s \"#{subl_path}\" /usr/local/bin/subl" unless $?.success?
+    system "ln -s \"#{subl_path}\" /usr/local/bin/subl" unless `which subl`
 
     system "git config --global core.editor \"subl -n -w\""
 
@@ -299,7 +298,6 @@ module Steps
       self.block description
 
       system "sudo sh -c \"echo '\n192.168.77.77\tcodeup.dev' >> /etc/hosts\""
-
     end
 
     description = "Now that everything has been configured, we are going to load the codeup.dev site. "
