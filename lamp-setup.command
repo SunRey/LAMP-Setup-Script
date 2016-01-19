@@ -183,7 +183,7 @@ module Steps
     end
 
     # Install brew cask
-    Support.brew_install 'caskroom/cask/brew-cask'
+    system "brew tap caskroom/cask"
 
     # Install ansible
     Support.brew_install 'ansible'
@@ -210,7 +210,6 @@ module Steps
     end
 
     system "sudo /usr/bin/easy_install passlib"
-
     puts # add an extra line after the output
 
     description = "We're going to start up the vagrant box with the command 'vagrant up'. If the box hasn't already been downloaded "
@@ -242,7 +241,7 @@ module Steps
         name = gets.chomp
       end
 
-      system "ssh-keygen -trsa -b2048 -C '#{name}@codeup' -f #{key_path}"
+      system "ssh-keygen -trsa -b2048 -C '#{name}@codeup' -f #{key_path} -N ''"
     end
 
     system "pbcopy < #{key_path}.pub"
@@ -260,17 +259,38 @@ module Steps
     system "open https://github.com/settings/ssh"
 
     self.block "We'll continue once you're done."
+
+    ssh_config_path = File.expand_path "~/.ssh/config"
+
+    if !File.exists? ssh_config_path || IO.readlines(ssh_config_path).grep(/Host\s+192\.168\.77\.77/).empty?
+      open(ssh_config_path, 'a') do |f|
+        f.puts "Hosts 192.168.77.77"
+        f.puts "    StrictHostKeyChecking no"
+        f.puts "    UserKnownHostsFile=/dev/null"
+      end
+    end
   end
 
   def sublime
     subl_path = Support.subl_path
 
     if subl_path.nil?
-      self.block "Looks like Sublime Text hasn't been installed yet. You'll need to take care of that before class starts."
-      return
+      description = "Looks like Sublime Text hasn't been installed yet. We are going to open your browser to "
+      description+= "http://www.sublimetext.com, please click the \"Download\" link and copy Sublime Text to "
+      description+= "your Applications folder."
+
+      self.block description
+
+      system "open http://www.sublimetext.com"
+
+      while subl_path.nil?
+        self.block "Please copy Sublime Text to your Applications folder."
+
+        subl_path = Support.subl_path
+      end
     end
 
-    system "ln -s \"#{subl_path}\" /usr/local/bin/subl" unless `which subl`
+    system "ln -s \"#{subl_path}\" /usr/local/bin/subl"
 
     system "git config --global core.editor \"subl -n -w\""
 
