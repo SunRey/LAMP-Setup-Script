@@ -34,11 +34,24 @@ module Support
     versions = `brew list #{package} --versions`
     options = args.last.is_a?(Hash) ? args.pop : {}
 
-    # if brew exits with error we install tmux
     if versions.empty?
       system "brew install #{package} #{args.join ' '}"
-    elsif options[:requires]
+    else
       system "brew upgrade #{package} #{args.join ' '}"
+    end
+  end
+
+  def pip_install(package, version = nil)
+    pip_info = `pip show #{package}`
+
+    if version
+      if $?.success?
+        return if pip_info.match /^Version: #{version}$/
+      end
+
+      system "sudo -H pip install --upgrade '#{package}~=#{version}'"
+    else
+      system "sudo -H pip install --upgrade '#{package}'"
     end
   end
 
@@ -124,7 +137,7 @@ module Steps
       when "final"
         self.heading "Final Configuration Steps"
       when "sublime"
-        self.heading "Setting up the Sublime Text editor"
+        self.heading "Setting up Sublime Text"
       else
         raise "Unknown step #{name}"
     end
@@ -159,9 +172,7 @@ module Steps
   end
 
   def homebrew
-    `which brew`
-
-    if $?.success?
+    if system("which brew > /dev/null")
       description = "Homebrew is already installed. We will check to make sure our other utilities--including Ansible, Vagrant, "
       description+= "and VirutalBox--are also set up."
 
@@ -179,11 +190,18 @@ module Steps
       system 'ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"'
     end
 
+    # Upgrading setuptools through pip chokes because of System Integrity Protection
+    # Manually install it through easy_install so pip can manage it safely
+    system "sudo easy_install -U setuptools"
+
+    system "sudo /usr/bin/easy_install pip" unless system("which pip > /dev/null")
+
     # Install brew cask
     system "brew tap caskroom/cask"
 
     # Install ansible
-    Support.brew_install 'ansible'
+    Support.pip_install 'ansible', '2.0.0.2'
+    Support.pip_install 'passlib'
 
     # Install Virtual Box
     Support.brew_cask_install "virtualbox" unless Support.app? "VirtualBox"
@@ -205,9 +223,6 @@ module Steps
 
       Support.git_download(Support.repo_url, full_repo_path)
     end
-
-    system "sudo /usr/bin/easy_install passlib"
-    puts # add an extra line after the output
 
     description = "We're going to start up the vagrant box with the command 'vagrant up'. If the box hasn't already been downloaded "
     description+= "this will grab it and configure the internal settings for it. This could take some considerable time so please "
