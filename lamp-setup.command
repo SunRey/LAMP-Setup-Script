@@ -261,7 +261,7 @@ module Steps
 
     if !File.exists? ssh_config_path || IO.readlines(ssh_config_path).grep(/Host\s+192\.168\.77\.77/).empty?
       open(ssh_config_path, 'a') do |f|
-        f.puts "Hosts 192.168.77.77"
+        f.puts "Host 192.168.77.77"
         f.puts "    StrictHostKeyChecking no"
         f.puts "    UserKnownHostsFile=/dev/null"
       end
