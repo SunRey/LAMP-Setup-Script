@@ -38,12 +38,7 @@ module Support
     if versions.empty?
       system "brew install #{package} #{args.join ' '}"
     elsif options[:requires]
-      # brew did not error out, verify tmux is greater than 1.8
-      # e.g. brew_tmux_query = 'tmux 1.9a'
-      installed_version = versions.split(/\n/).first.split(' ')[1]
-      unless version_match?(options[:version], installed_version)
-        system "brew upgrade #{package} #{args.join ' '}"
-      end
+      system "brew upgrade #{package} #{args.join ' '}"
     end
   end
 
@@ -171,6 +166,8 @@ module Steps
       description+= "and VirutalBox--are also set up."
 
       self.block description
+
+      system "brew update"
     else
       description = "We will now install a tool called 'Homebrew'. This is a package manager we will use to install several "
       description+= "other utilities we will be using in the course, including Ansible, Vagrant, and VirtualBox. "
