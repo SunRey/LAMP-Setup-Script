@@ -20,14 +20,14 @@ module Support
   end
 
   def git_download(repo_url, local_path)
-    system "git clone #{repo_url} #{local_path}"
+    `git clone #{repo_url} #{local_path} 2>&1`
     if IO.readlines("#{local_path}/.git/info/exclude").grep(/^\*$/).empty?
-      system "echo '*' >> #{local_path}/.git/info/exclude"
+      `echo '*' >> #{local_path}/.git/info/exclude`
     end
   end
 
   def subl_pkg_install(package_path)
-    system "curl -L --progress-bar -o \"#{package_path}/Package Control.sublime-package\" https://sublime.wbond.net/Package%20Control.sublime-package"
+    `curl -L --silent -o \"#{package_path}/Package Control.sublime-package\" https://sublime.wbond.net/Package%20Control.sublime-package`
   end
 
   def brew_install(package, *args)
@@ -35,9 +35,9 @@ module Support
     options = args.last.is_a?(Hash) ? args.pop : {}
 
     if versions.empty?
-      system "brew install #{package} #{args.join ' '}"
+      `brew install #{package} #{args.join ' '}`
     else
-      system "brew upgrade #{package} #{args.join ' '}"
+      `brew upgrade #{package} #{args.join ' '}`
     end
   end
 
@@ -73,9 +73,9 @@ module Support
 
   def subl_path
     ["/Applications", "~/Applications"].each do |app_path|
-      `find #{app_path} -name subl`.each_line do |subl_path|
+      `find #{app_path} -name subl 2>&1`.each_line do |subl_path|
         subl_path.chomp!
-        return subl_path if `\"#{subl_path}\" --version`.start_with? 'Sublime Text'
+        return subl_path if `\"#{subl_path}\" --version 2>&1`.start_with? 'Sublime Text'
       end
     end
 
@@ -163,7 +163,7 @@ module Steps
 
       self.block description
 
-      system "xcode-select --install"
+      `xcode-select --install 2>&1`
 
       while !Support.xcode?
         sleep 1
@@ -178,7 +178,7 @@ module Steps
 
       self.block description
 
-      system "brew update"
+      `brew update 2>&1`
     else
       description = "We will now install a tool called 'Homebrew'. This is a package manager we will use to install several "
       description+= "other utilities we will be using in the course, including Ansible, Vagrant, and VirtualBox. "
@@ -190,24 +190,24 @@ module Steps
       system 'ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"'
     end
 
-    # Upgrading setuptools through pip chokes because of System Integrity Protection
-    # Manually install it through easy_install so pip can manage it safely
-    system "sudo easy_install -U setuptools"
-
-    system "sudo /usr/bin/easy_install pip" unless system("which pip > /dev/null")
-
     # Install brew cask
-    system "brew tap caskroom/cask"
-
-    # Install ansible
-    Support.pip_install 'ansible', '2.0.0.2'
-    Support.pip_install 'passlib'
+    `brew tap caskroom/cask 2>&1`
 
     # Install Virtual Box
     Support.brew_cask_install "virtualbox" unless Support.app? "VirtualBox"
 
     # Install Vagrant
     Support.brew_cask_install "vagrant"
+
+    # Upgrading setuptools through pip chokes because of System Integrity Protection
+    # Manually install it through easy_install so pip can manage it safely
+    system "sudo easy_install -U setuptools"
+
+    system "sudo /usr/bin/easy_install pip" unless system("which pip > /dev/null")
+
+    # Install ansible
+    Support.pip_install 'ansible', '2.0.0.2'
+    Support.pip_install 'passlib'
   end
 
   def vagrant_lamp
@@ -253,10 +253,10 @@ module Steps
         name = gets.chomp
       end
 
-      system "ssh-keygen -trsa -b2048 -C '#{name}@codeup' -f #{key_path} -N ''"
+      `ssh-keygen -trsa -b2048 -C '#{name}@codeup' -f #{key_path} -N ''`
     end
 
-    system "pbcopy < #{key_path}.pub"
+    `pbcopy < #{key_path}.pub`
 
     puts "   The following is your new SSH key:\n"
     puts IO.read(key_path + ".pub")
@@ -268,7 +268,7 @@ module Steps
 
     self.block description
 
-    system "open https://github.com/settings/ssh"
+    `open https://github.com/settings/ssh`
 
     self.block "We'll continue once you're done."
 
@@ -293,7 +293,7 @@ module Steps
 
       self.block description
 
-      system "open http://www.sublimetext.com"
+      `open http://www.sublimetext.com`
 
       while subl_path.nil?
         self.block "Please copy Sublime Text to your Applications folder."
@@ -302,9 +302,9 @@ module Steps
       end
     end
 
-    system "ln -s \"#{subl_path}\" /usr/local/bin/subl"
+    `ln -s \"#{subl_path}\" /usr/local/bin/subl 2>&1`
 
-    system "git config --global core.editor \"subl -n -w\""
+    `git config --global core.editor \"subl -n -w\"`
 
     description = "We're going to install the Sublime Text Package Manager. This is a plugin for Sublime that makes "
     description+= "it incredibly easy to install other plugins and add functionality to Sublime."
@@ -315,7 +315,7 @@ module Steps
 
     package_dir = File.expand_path "~/Library/Application Support/#{support_dir}/Installed Packages"
 
-    system "mkdir -p \"#{package_dir}\""
+    `mkdir -p \"#{package_dir}\"`
 
     Support.subl_pkg_install package_dir
   end
@@ -339,7 +339,7 @@ module Steps
 
     self.block description
 
-    system "open http://codeup.dev"
+    `open http://codeup.dev`
 
     description = "Ok! We've gotten everything setup and you should be ready to go! Thanks for taking the time to "
     description+= "get your laptop configured and good luck in the class."
