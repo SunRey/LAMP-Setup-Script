@@ -199,15 +199,8 @@ module Steps
     # Install Vagrant
     Support.brew_cask_install "vagrant"
 
-    # Upgrading setuptools through pip chokes because of System Integrity Protection
-    # Manually install it through easy_install so pip can manage it safely
-    system "sudo easy_install -U setuptools"
-
-    system "sudo /usr/bin/easy_install pip" unless system("which pip > /dev/null")
-
-    # Install ansible
-    Support.pip_install 'ansible', '2.0.0.2'
-    Support.pip_install 'passlib'
+    # Install Ansible
+    Support.brew_install "ansible"
   end
 
   def vagrant_lamp
